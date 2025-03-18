@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, send_file, Response
+from flask import Flask, request, send_file, Response
 import requests
 from PIL import Image
 from io import BytesIO
@@ -32,10 +32,26 @@ app = Flask(__name__)
 # API Key (Hugging Face)
 hf_api_key = os.getenv("HF_API_KEY")
 
-# Home page with links to functionalities
+# Home page
 @app.route('/')
 def home():
-    return render_template('index.html')
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>GEN IQ</title></head>
+    <body>
+        <h1>GEN IQ</h1>
+        <ul>
+            <li><a href="/text_to_image">Text-to-Image</a></li>
+            <li><a href="/text_to_audio">Text-to-Audio</a></li>
+            <li><a href="/summarize">Summarization</a></li>
+            <li><a href="/debug">Code Debugger</a></li>
+            <li><a href="/ats_score">ATS Score Checker</a></li>
+        </ul>
+    </body>
+    </html>
+    """
+    return html
 
 # 1. Text-to-Image
 @app.route('/text_to_image', methods=['GET', 'POST'])
@@ -59,7 +75,21 @@ def text_to_image():
                 return f"API error: {response.status_code}", 500
         except Exception as e:
             return f"Error: {str(e)}", 500
-    return render_template('text_to_image.html')
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Text-to-Image</title></head>
+    <body>
+        <h2>Text-to-Image Generation</h2>
+        <form method="POST">
+            <label>Prompt:</label><br>
+            <input type="text" name="prompt" value="A futuristic city"><br>
+            <input type="submit" value="Generate Image">
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 # 2. Text-to-Audio
 @app.route('/text_to_audio', methods=['GET', 'POST'])
@@ -77,7 +107,27 @@ def text_to_audio():
         finally:
             if os.path.exists(tmp.name):
                 os.unlink(tmp.name)
-    return render_template('text_to_audio.html')
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Text-to-Audio</title></head>
+    <body>
+        <h2>Text-to-Audio Conversion</h2>
+        <form method="POST">
+            <label>Text:</label><br>
+            <textarea name="text">Hello, this is a test.</textarea><br>
+            <label>Language:</label><br>
+            <select name="lang">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+            </select><br>
+            <input type="submit" value="Convert to Audio">
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 # 3. Summarization
 @app.route('/summarize', methods=['GET', 'POST'])
@@ -101,8 +151,24 @@ def summarize():
             sentence_scores[i] = score / (len(word_tokenize(sent)) + 1)
         top_sentences = sorted(sorted(sentence_scores.items(), key=lambda x: x[0])[:summary_sentences], key=lambda x: x[1], reverse=True)
         summary = [sentences[i] for i, _ in top_sentences]
-        return "\n".join(summary), 200
-    return render_template('summarize.html')
+        return "<pre>" + "\n".join(summary) + "</pre>", 200
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Summarization</title></head>
+    <body>
+        <h2>AI-Powered Summarization</h2>
+        <form method="POST">
+            <label>Text to Summarize:</label><br>
+            <textarea name="text" rows="10" cols="50">Paste your text here...</textarea><br>
+            <label>Number of Sentences:</label><br>
+            <input type="number" name="summary_sentences" value="2" min="1" max="5"><br>
+            <input type="submit" value="Summarize">
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 # 4. Code Debugger
 @app.route('/debug', methods=['GET', 'POST'])
@@ -120,11 +186,25 @@ def debug():
             output.close()
             os.unlink(tmp_path)
             if lint_output.strip():
-                return lint_output, 200
+                return "<pre>" + lint_output + "</pre>", 200
             return "No issues detected by pylint.", 200
         except Exception as e:
             return f"Error: {str(e)}", 500
-    return render_template('debug.html')
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Code Debugger</title></head>
+    <body>
+        <h2>Code Debugger</h2>
+        <form method="POST">
+            <label>Your Code:</label><br>
+            <textarea name="code" rows="10" cols="50">def example():\n    print(undefined_variable)</textarea><br>
+            <input type="submit" value="Debug">
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 # 5. ATS Score Checker
 @app.route('/ats_score', methods=['GET', 'POST'])
@@ -143,10 +223,26 @@ def ats_score():
             job_words = set(job_desc.lower().split())
             common = resume_words.intersection(job_words)
             score = min(len(common) / len(job_words) * 100, 100)
-            return f"ATS Score: {score:.2f}%\nMatches: {', '.join(common)}", 200
+            return f"<pre>ATS Score: {score:.2f}%\nMatches: {', '.join(common)}</pre>", 200
         except Exception as e:
             return f"Error: {str(e)}", 500
-    return render_template('ats_score.html')
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>ATS Score Checker</title></head>
+    <body>
+        <h2>ATS Score Checker</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <label>Upload Resume (PDF):</label><br>
+            <input type="file" name="resume" accept=".pdf"><br>
+            <label>Job Description:</label><br>
+            <textarea name="job_desc" rows="5" cols="50">Enter here...</textarea><br>
+            <input type="submit" value="Check Score">
+        </form>
+    </body>
+    </html>
+    """
+    return html
 
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 5000))
